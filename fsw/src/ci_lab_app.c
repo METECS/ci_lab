@@ -303,7 +303,11 @@ void CI_ReportHousekeeping(void)
         /*
          * Create and use a temporary structure to ensure type alignment
          */
-        CFE_SB_Msg_t tempMessage;
+        union {
+           CFE_SB_Msg_t attr1;
+           ci_hk_tlm_t attr2;
+        } tempMessage;
+
         memcpy(&tempMessage, &CI_HkTelemetryPkt, sizeof(tempMessage));
 
         CFE_SB_TimeStampMsg((CFE_SB_Msg_t *)&tempMessage);
