@@ -49,7 +49,7 @@ CFE_SB_PipeId_t    CI_CommandPipe;
 CFE_SB_MsgPtr_t    CIMsgPtr;
 int                CI_SocketID;
 struct sockaddr_in CI_SocketAddress;
-uint8              CI_IngestBuffer[CI_MAX_INGEST];
+uint32             CI_IngestBuffer[CI_MAX_INGEST/4];
 CFE_SB_Msg_t *     CI_IngestPointer = (CFE_SB_Msg_t *)&CI_IngestBuffer[0];
 CFE_SB_MsgId_t     PDUMessageID     = 0;
 bool               adjustFileSize   = false;
@@ -549,8 +549,8 @@ void CI_ProcessPDU(void)
     uint8          EntityIdBytes, TransSeqBytes, PduHdrBytes;
     CFE_SB_MsgId_t MessageID = CFE_SB_GetMsgId(CI_IngestPointer);
     bool           sendToSB  = false;
-    uint32 *       checkSumPtr;
-    uint32 *       fileSizePtr;
+    uint8 *        checkSumPtr;
+    uint8 *        fileSizePtr;
 
     if (MessageID == PDUMessageID)
     {
@@ -615,14 +615,17 @@ void CI_ProcessPDU(void)
                     }
 
                     PduDataPtr += 2;
-                    checkSumPtr = (uint32 *)PduDataPtr;
-                    fileSizePtr = checkSumPtr + 1;
+                    checkSumPtr = (uint8 *)PduDataPtr;
+                    fileSizePtr = checkSumPtr + 4;
 
                     if (corruptChecksum == true)
                     {
                         OS_printf("CI: good checksum = %x\n", (unsigned int)*checkSumPtr);
                         /* Corrupt the checksum */
-                        *checkSumPtr = 0x12345678;
+                        *(checkSumPtr + 0) = 0x12;
+                        *(checkSumPtr + 1) = 0x34;
+                        *(checkSumPtr + 2) = 0x56;
+                        *(checkSumPtr + 3) = 0x78;
                         OS_printf("CI: corrupted checksum = %x\n", (unsigned int)*checkSumPtr);
                         corruptChecksum = false;
                     }
@@ -631,7 +634,7 @@ void CI_ProcessPDU(void)
                     {
                         OS_printf("CI: good file size = %d\n", (int)*fileSizePtr);
                         /* Adjust the file size */
-                        *fileSizePtr += PDUFileSizeAdjustment;
+                        *fileSizePtr += PDUFileSizeAdjustment * 4;
                         OS_printf("CI: adjusted file size = %d\n", (int)*fileSizePtr);
                         adjustFileSize = false;
                     }
@@ -748,7 +751,7 @@ void CI_ReadUpLink(void)
             break; /* no (more) messages */
         else
         {
-            if (status <= CI_MAX_INGEST)
+            if (status <= sizeof(CI_IngestBuffer))
             {
                 if (PDUMessageID != 0)
                 {

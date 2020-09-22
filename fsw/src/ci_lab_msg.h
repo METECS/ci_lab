@@ -88,8 +88,10 @@ typedef struct
 */
 typedef struct
 {
-
-    uint8  TlmHeader[CFE_SB_TLM_HDR_SIZE];
+    union {
+        uint8  TlmHeader[CFE_SB_TLM_HDR_SIZE];
+        uint32 align;
+    } align;
     uint8  ci_command_error_count;
     uint8  ci_command_count;
     uint8  ci_xsums_enabled;
@@ -105,7 +107,7 @@ typedef struct
     uint32 IngestErrors;
     uint32 PDUsCaptured;
 
-} OS_PACK ci_hk_tlm_t;
+} ci_hk_tlm_t;
 
 #define CI_LAB_HK_TLM_LNGTH sizeof(ci_hk_tlm_t)
 
